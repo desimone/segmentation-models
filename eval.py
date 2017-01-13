@@ -106,8 +106,6 @@ def main(_):
             metrics.streaming_accuracy(predictions, labels),
         'precision':
             metrics.streaming_precision(predictions, labels),
-        # 'recall':
-        #     metrics.streaming_recall(predictions, labels, .3),
     })
 
     # Print the summaries to screen.

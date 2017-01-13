@@ -3,11 +3,12 @@
 from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
+from tensorflow.python.ops import control_flow_ops
+
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
-from tensorflow.python.ops import control_flow_ops
 
 slim = tf.contrib.slim
 flags = tf.app.flags
@@ -42,7 +43,7 @@ flags.DEFINE_float('momentum', 0.9, 'MomentumOptimizer and RMSPropOptimizer')
 flags.DEFINE_float('rmsprop_momentum', 0.9, 'Momentum')
 flags.DEFINE_float('rmsprop_decay', 0.9, 'Decay term for RMSProp')
 
-# LR Flags
+# Learning rate Flags
 flags.DEFINE_string('learning_rate_decay_type', 'polynomial',
                     'exponential/fixed/polynomial')
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate')
@@ -85,16 +86,16 @@ FLAGS = flags.FLAGS
 def _configure_learning_rate(num_samples_per_epoch, global_step):
   """Configures the learning rate.
 
-    Args:
-      num_samples_per_epoch: The samples in each epoch of training.
-      global_step: The global_step tensor.
+      Args:
+        num_samples_per_epoch: The samples in each epoch of training.
+        global_step: The global_step tensor.
 
-    Returns:
-      A `Tensor` representing the learning rate.
+      Returns:
+        A `Tensor` representing the learning rate.
 
-    Raises:
-      ValueError: if
-    """
+      Raises:
+        ValueError: if
+      """
   decay_steps = int(num_samples_per_epoch / FLAGS.batch_size *
                     FLAGS.num_epochs_per_decay)
   if FLAGS.sync_replicas:
@@ -120,20 +121,20 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
         cycle=False,
         name='polynomial_decay_learning_rate')
   else:
-    raise ValueError('learning_rate_decay_type [%s] was not recognized',
+    raise ValueError('learning_rate_decay_type [%s]',
                      FLAGS.learning_rate_decay_type)
 
 
 def _configure_optimizer(learning_rate):
   """Configures the optimizer used for training.
 
-    Args: learning_rate: A scalar or `Tensor` learning rate.
+      Args: learning_rate: A scalar or `Tensor` learning rate.
 
-    Returns: An instance of an optimizer.
+      Returns: An instance of an optimizer.
 
-    Raises:
-      ValueError: if FLAGS.optimizer is not recognized.
-    """
+      Raises:
+        ValueError: if FLAGS.optimizer is not recognized.
+      """
   if FLAGS.optimizer == 'adadelta':
     optimizer = tf.train.AdadeltaOptimizer(
         learning_rate, rho=FLAGS.adadelta_rho, epsilon=FLAGS.opt_epsilon)
@@ -181,11 +182,11 @@ def _add_variables_summaries(learning_rate):
 def _get_init_fn():
   """Returns a function run by the chief worker to warm-start the training.
 
-    init_fn is only run when initializing the model on first global step.
+      init_fn is only run when initializing the model on first global step.
 
-    Returns:
-      An init function run by the supervisor.
-    """
+      Returns:
+        An init function run by the supervisor.
+      """
   if FLAGS.checkpoint_path is None:
     return None
 
@@ -230,9 +231,9 @@ def _get_init_fn():
 def _get_variables_to_train():
   """Returns a list of variables to train.
 
-    Returns:
-      A list of variables to train by the optimizer.
-    """
+      Returns:
+        A list of variables to train by the optimizer.
+      """
   if FLAGS.trainable_scopes is None:
     return tf.trainable_variables()
   else:
@@ -251,7 +252,7 @@ def main(_):
 
   tf.logging.set_verbosity(tf.logging.INFO)
   with tf.Graph().as_default():
-    # Config model_deploy#
+    # Config model_deploy 
     deploy_config = model_deploy.DeploymentConfig(
         num_clones=FLAGS.num_clones,
         clone_on_cpu=FLAGS.clone_on_cpu,
@@ -275,7 +276,7 @@ def main(_):
         weight_decay=FLAGS.weight_decay,
         is_training=True)
 
-    # Select the preprocessing function #
+    # Select the preprocessing function
     preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
         preprocessing_name, is_training=True)
@@ -289,19 +290,19 @@ def main(_):
           common_queue_capacity=20 * FLAGS.batch_size,
           common_queue_min=10 * FLAGS.batch_size)
       [image, label] = provider.get(['image', 'label'])
+      label = image
       # todo(bdd) : imagewise labels
       # label -= FLAGS.labels_offset
       train_image_size = FLAGS.train_image_size or network_fn.default_image_size
-
-      image = image_preprocessing_fn(image, train_image_size, train_image_size)
-
+      image, label = image_preprocessing_fn(image, label, train_image_size,
+                                            train_image_size)
       images, labels = tf.train.batch(
           [image, label],
           batch_size=FLAGS.batch_size,
           num_threads=FLAGS.num_preprocessing_threads,
           capacity=5 * FLAGS.batch_size)
-      labels = slim.one_hot_encoding(labels,
-                                     dataset.num_classes - FLAGS.labels_offset)
+
+      #labels = slim.one_hot_encoding(labels, dataset.num_classes)
       batch_queue = slim.prefetch_queue.prefetch_queue(
           [images, labels], capacity=2 * deploy_config.num_clones)
 
@@ -324,10 +325,10 @@ def main(_):
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
     clones = model_deploy.create_clones(deploy_config, clone_fn, [batch_queue])
-    first_clone_scope = deploy_config.clone_scope(0)
+    clone_scope = deploy_config.clone_scope(0)
     # Gather update_ops from the first clone. These contain, for example,
     # the updates for batch_norm variables created by network_fn.
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, clone_scope)
 
     # Add summaries for end_points.
     end_points = clones[0].outputs
@@ -338,7 +339,7 @@ def main(_):
           tf.summary.scalar('sparsity_' + end_point, tf.nn.zero_fraction(x)))
 
     # Add summaries for losses.
-    for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
+    for loss in tf.get_collection(tf.GraphKeys.LOSSES, clone_scope):
       summaries.add(tf.summary.scalar('losses_%s' % loss.op.name, loss))
 
     # Add summaries for variables.
@@ -378,14 +379,14 @@ def main(_):
     variables_to_train = _get_variables_to_train()
 
     # and returns a train_tensor and summary_op
-    total_loss, clones_gradients = model_deploy.optimize_clones(
+    total_loss, cl_gradients = model_deploy.optimize_clones(
         clones, optimizer, var_list=variables_to_train)
     # Add total_loss to summary.
     summaries.add(tf.summary.scalar('total_loss', total_loss))
 
     # Create gradient updates.
     grad_updates = optimizer.apply_gradients(
-        clones_gradients, global_step=global_step)
+        cl_gradients, global_step=global_step)
     update_ops.append(grad_updates)
 
     update_op = tf.group(*update_ops)
@@ -394,8 +395,7 @@ def main(_):
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or
     # _gather_clone_loss().
-    summaries |= set(
-        tf.get_collection(tf.GraphKeys.SUMMARIES, first_clone_scope))
+    summaries |= set(tf.get_collection(tf.GraphKeys.SUMMARIES, clone_scope))
 
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(summaries), name='summary_op')

@@ -12,18 +12,18 @@ slim = tf.contrib.slim
 def preprocess_for_train(image, output_height, output_width, padding=_PADDING):
   """Preprocesses the given image for training.
 
-    Note that the actual resizing scale is sampled from
-      [`resize_size_min`, `resize_size_max`].
+      Note that the actual resizing scale is sampled from
+        [`resize_size_min`, `resize_size_max`].
 
-    Args:
-      image: A `Tensor` representing an image of arbitrary size.
-      output_height: The height of the image after preprocessing.
-      output_width: The width of the image after preprocessing.
-      padding: The amound of padding before and after each dimension of the image.
+      Args:
+        image: A `Tensor` representing an image of arbitrary size.
+        output_height: The height of the image after preprocessing.
+        output_width: The width of the image after preprocessing.
+        padding: The amound of padding before and after each dimension of the image.
 
-    Returns:
-      A preprocessed image.
-    """
+      Returns:
+        A preprocessed image.
+      """
   tf.summary.image('image', tf.expand_dims(image, 0))
 
   # Transform the image to floats.
@@ -50,14 +50,14 @@ def preprocess_for_train(image, output_height, output_width, padding=_PADDING):
 def preprocess_for_eval(image, output_height, output_width):
   """Preprocesses the given image for evaluation.
 
-    Args:
-      image: A `Tensor` representing an image of arbitrary size.
-      output_height: The height of the image after preprocessing.
-      output_width: The width of the image after preprocessing.
+      Args:
+        image: A `Tensor` representing an image of arbitrary size.
+        output_height: The height of the image after preprocessing.
+        output_width: The width of the image after preprocessing.
 
-    Returns:
-      A preprocessed image.
-    """
+      Returns:
+        A preprocessed image.
+      """
   tf.summary.image('image', tf.expand_dims(image, 0))
   # Transform the image to floats.
   image = tf.to_float(image)
@@ -74,16 +74,16 @@ def preprocess_for_eval(image, output_height, output_width):
 def preprocess_image(image, output_height, output_width, is_training=False):
   """Preprocesses the given image.
 
-    Args:
-      image: A `Tensor` representing an image of arbitrary size.
-      output_height: The height of the image after preprocessing.
-      output_width: The width of the image after preprocessing.
-      is_training: `True` if we're preprocessing the image for training and
-        `False` otherwise.
+      Args:
+        image: A `Tensor` representing an image of arbitrary size.
+        output_height: The height of the image after preprocessing.
+        output_width: The width of the image after preprocessing.
+        is_training: `True` if we're preprocessing the image for training and
+          `False` otherwise.
 
-    Returns:
-      A preprocessed image.
-    """
+      Returns:
+        A preprocessed image.
+      """
   if is_training:
     return preprocess_for_train(image, output_height, output_width)
   else:

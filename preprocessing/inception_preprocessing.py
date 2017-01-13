@@ -9,15 +9,15 @@ from tensorflow.python.ops import control_flow_ops
 def apply_with_random_selector(x, func, num_cases):
   """Computes func(x, sel), with sel sampled from [0...num_cases-1].
 
-    Args:
-      x: input Tensor.
-      func: Python function to apply.
-      num_cases: Python int32, number of cases to sample sel from.
+      Args:
+        x: input Tensor.
+        func: Python function to apply.
+        num_cases: Python int32, number of cases to sample sel from.
 
-    Returns:
-      The result of func(x, sel), where func receives the value of the
-      selector as a python integer, but sel is sampled dynamically.
-    """
+      Returns:
+        The result of func(x, sel), where func receives the value of the
+        selector as a python integer, but sel is sampled dynamically.
+      """
   sel = tf.random_uniform([], maxval=num_cases, dtype=tf.int32)
   # Pass the real x only to one of the func calls.
   return control_flow_ops.merge([
@@ -29,21 +29,21 @@ def apply_with_random_selector(x, func, num_cases):
 def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
   """Distort the color of a Tensor image.
 
-    Each color distortion is non-commutative and thus ordering of the color ops
-    matters. Ideally we would randomly permute the ordering of the color ops.
-    Rather then adding that level of complication, we select a distinct ordering
-    of color ops for each preprocessing thread.
+      Each color distortion is non-commutative and thus ordering of the color ops
+      matters. Ideally we would randomly permute the ordering of the color ops.
+      Rather then adding that level of complication, we select a distinct ordering
+      of color ops for each preprocessing thread.
 
-    Args:
-      image: 3-D Tensor containing single image in [0, 1].
-      color_ordering: Python int, a type of distortion (valid values: 0-3).
-      fast_mode: Avoids slower ops (random_hue and random_contrast)
-      scope: Optional scope for name_scope.
-    Returns:
-      3-D Tensor color-distorted image on range [0, 1]
-    Raises:
-      ValueError: if color_ordering not in [0, 3]
-    """
+      Args:
+        image: 3-D Tensor containing single image in [0, 1].
+        color_ordering: Python int, a type of distortion (valid values: 0-3).
+        fast_mode: Avoids slower ops (random_hue and random_contrast)
+        scope: Optional scope for name_scope.
+      Returns:
+        3-D Tensor color-distorted image on range [0, 1]
+      Raises:
+        ValueError: if color_ordering not in [0, 3]
+      """
   with tf.name_scope(scope, 'distort_color', [image]):
     if fast_mode:
       if color_ordering == 0:
@@ -89,28 +89,28 @@ def distorted_bounding_box_crop(image,
                                 scope=None):
   """Generates cropped_image using a one of the bboxes randomly distorted.
 
-    See `tf.image.sample_distorted_bounding_box` for more documentation.
+      See `tf.image.sample_distorted_bounding_box` for more documentation.
 
-    Args:
-      image: 3-D Tensor of image (it will be converted to floats in [0, 1]).
-      bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
-        where each coordinate is [0, 1) and the coordinates are arranged
-        as [ymin, xmin, ymax, xmax]. If num_boxes is 0 then it would use the whole
-        image.
-      min_object_covered: An optional `float`. Defaults to `0.1`. The cropped
-        area of the image must contain at least this fraction of any bounding box
-        supplied.
-      aspect_ratio_range: An optional list of `floats`. The cropped area of the
-        image must have an aspect ratio = width / height within this range.
-      area_range: An optional list of `floats`. The cropped area of the image
-        must contain a fraction of the supplied image within in this range.
-      max_attempts: An optional `int`. Number of attempts at generating a cropped
-        region of the image of the specified constraints. After `max_attempts`
-        failures, return the entire image.
-      scope: Optional scope for name_scope.
-    Returns:
-      A tuple, a 3-D Tensor cropped_image and the distorted bbox
-    """
+      Args:
+        image: 3-D Tensor of image (it will be converted to floats in [0, 1]).
+        bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
+          where each coordinate is [0, 1) and the coordinates are arranged
+          as [ymin, xmin, ymax, xmax]. If num_boxes is 0 then it would use the whole
+          image.
+        min_object_covered: An optional `float`. Defaults to `0.1`. The cropped
+          area of the image must contain at least this fraction of any bounding box
+          supplied.
+        aspect_ratio_range: An optional list of `floats`. The cropped area of the
+          image must have an aspect ratio = width / height within this range.
+        area_range: An optional list of `floats`. The cropped area of the image
+          must contain a fraction of the supplied image within in this range.
+        max_attempts: An optional `int`. Number of attempts at generating a cropped
+          region of the image of the specified constraints. After `max_attempts`
+          failures, return the entire image.
+        scope: Optional scope for name_scope.
+      Returns:
+        A tuple, a 3-D Tensor cropped_image and the distorted bbox
+      """
   with tf.name_scope(scope, 'distorted_bounding_box_crop', [image, bbox]):
     # Each bounding box has shape [1, num_boxes, box coords] and
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
@@ -141,29 +141,29 @@ def preprocess_for_train(image, height, width, bbox, fast_mode=True,
                          scope=None):
   """Distort one image for training a network.
 
-    Distorting images provides a useful technique for augmenting the data
-    set during training in order to make the network invariant to aspects
-    of the image that do not effect the label.
+      Distorting images provides a useful technique for augmenting the data
+      set during training in order to make the network invariant to aspects
+      of the image that do not effect the label.
 
-    Additionally it would create image_summaries to display the different
-    transformations applied to the image.
+      Additionally it would create image_summaries to display the different
+      transformations applied to the image.
 
-    Args:
-      image: 3-D Tensor of image. If dtype is tf.float32 then the range should be
-        [0, 1], otherwise it would converted to tf.float32 assuming that the range
-        is [0, MAX], where MAX is largest positive representable number for
-        int(8/16/32) data type (see `tf.image.convert_image_dtype` for details).
-      height: integer
-      width: integer
-      bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
-        where each coordinate is [0, 1) and the coordinates are arranged
-        as [ymin, xmin, ymax, xmax].
-      fast_mode: Optional boolean, if True avoids slower transformations (i.e.
-        bi-cubic resizing, random_hue or random_contrast).
-      scope: Optional scope for name_scope.
-    Returns:
-      3-D float Tensor of distorted image used for training with range [-1, 1].
-    """
+      Args:
+        image: 3-D Tensor of image. If dtype is tf.float32 then the range should be
+          [0, 1], otherwise it would converted to tf.float32 assuming that the range
+          is [0, MAX], where MAX is largest positive representable number for
+          int(8/16/32) data type (see `tf.image.convert_image_dtype` for details).
+        height: integer
+        width: integer
+        bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
+          where each coordinate is [0, 1) and the coordinates are arranged
+          as [ymin, xmin, ymax, xmax].
+        fast_mode: Optional boolean, if True avoids slower transformations (i.e.
+          bi-cubic resizing, random_hue or random_contrast).
+        scope: Optional scope for name_scope.
+      Returns:
+        3-D float Tensor of distorted image used for training with range [-1, 1].
+      """
   with tf.name_scope(scope, 'distort_image', [image, height, width, bbox]):
     if bbox is None:
       bbox = tf.constant(
@@ -224,24 +224,24 @@ def preprocess_for_eval(image,
                         scope=None):
   """Prepare one image for evaluation.
 
-    If height and width are specified it would output an image with that size by
-    applying resize_bilinear.
+      If height and width are specified it would output an image with that size by
+      applying resize_bilinear.
 
-    If central_fraction is specified it would cropt the central fraction of the
-    input image.
+      If central_fraction is specified it would cropt the central fraction of the
+      input image.
 
-    Args:
-      image: 3-D Tensor of image. If dtype is tf.float32 then the range should be
-        [0, 1], otherwise it would converted to tf.float32 assuming that the range
-        is [0, MAX], where MAX is largest positive representable number for
-        int(8/16/32) data type (see `tf.image.convert_image_dtype` for details)
-      height: integer
-      width: integer
-      central_fraction: Optional Float, fraction of the image to crop.
-      scope: Optional scope for name_scope.
-    Returns:
-      3-D float Tensor of prepared image.
-    """
+      Args:
+        image: 3-D Tensor of image. If dtype is tf.float32 then the range should be
+          [0, 1], otherwise it would converted to tf.float32 assuming that the range
+          is [0, MAX], where MAX is largest positive representable number for
+          int(8/16/32) data type (see `tf.image.convert_image_dtype` for details)
+        height: integer
+        width: integer
+        central_fraction: Optional Float, fraction of the image to crop.
+        scope: Optional scope for name_scope.
+      Returns:
+        3-D float Tensor of prepared image.
+      """
   with tf.name_scope(scope, 'eval_image', [image, height, width]):
     if image.dtype != tf.float32:
       image = tf.image.convert_image_dtype(image, dtype=tf.float32)
@@ -269,23 +269,23 @@ def preprocess_image(image,
                      fast_mode=True):
   """Pre-process one image for training or evaluation.
 
-    Args:
-      image: 3-D Tensor [height, width, channels] with the image.
-      height: integer, image expected height.
-      width: integer, image expected width.
-      is_training: Boolean. If true it would transform an image for train,
-        otherwise it would transform it for evaluation.
-      bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
-        where each coordinate is [0, 1) and the coordinates are arranged as
-        [ymin, xmin, ymax, xmax].
-      fast_mode: Optional boolean, if True avoids slower transformations.
+      Args:
+        image: 3-D Tensor [height, width, channels] with the image.
+        height: integer, image expected height.
+        width: integer, image expected width.
+        is_training: Boolean. If true it would transform an image for train,
+          otherwise it would transform it for evaluation.
+        bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
+          where each coordinate is [0, 1) and the coordinates are arranged as
+          [ymin, xmin, ymax, xmax].
+        fast_mode: Optional boolean, if True avoids slower transformations.
 
-    Returns:
-      3-D float Tensor containing an appropriately scaled image
+      Returns:
+        3-D float Tensor containing an appropriately scaled image
 
-    Raises:
-      ValueError: if user does not provide bounding box
-    """
+      Raises:
+        ValueError: if user does not provide bounding box
+      """
   if is_training:
     return preprocess_for_train(image, height, width, bbox, fast_mode)
   else:
